@@ -18,7 +18,9 @@
     - A collision filter that checks if the line between the points intersect with a critical structure
     - A distance measurement that measures the distance between the line and the critical structure for all lines that do not collide
     
-    The best path is one that is shorter than the length threshold, does not collide with critical structures and stays the furthest away from a critical structure
+  The best path is one that is shorter than the length threshold,
+  does not collide with critical structures
+  and stays the furthest away from a critical structure
 
 # Usage:
   import the following data into slicer, making sure the data type is correct:
