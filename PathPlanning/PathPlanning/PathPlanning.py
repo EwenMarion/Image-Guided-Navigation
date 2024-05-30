@@ -65,7 +65,7 @@ class PathPlanningParameterNode:
     inputCriticalVolume: vtkMRMLLabelMapVolumeNode
     inputEntryFiducials: vtkMRMLMarkupsFiducialNode
     inputTargetFiducials: vtkMRMLMarkupsFiducialNode
-    lengthThreshold: Annotated[float, WithinRange(0, 500)] = 100
+    lengthThreshold: Annotated[float, WithinRange(0, 100)] = 65
     outputFiducials: vtkMRMLMarkupsFiducialNode
 
 
