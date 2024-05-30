@@ -365,16 +365,23 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
                 targetPointRAS = [0, 0, 0]
                 outputFiducials.GetNthControlPointPosition(targetIndex, targetPointRAS)
 
+                print(f"entry point: {entryPointRAS}")
+                print(f"target point: {targetPointRAS}")
+
                 pathLength = np.linalg.norm(np.array(targetPointRAS) - np.array(entryPointRAS))
                 if pathLength > lengthThreshold:
                     print("Line too long")
+                    print("")
                     continue
-                print(f"Line length = {pathLength:.2f}")
+                else:
+                    print(f"Line length = {pathLength:.2f}")
 
-                if self.CollisionDetection(CriticalVolume, entryPointRAS, targetPointRAS, mat):
+                if self.CollisionDetection(CriticalVolume, entryPointRAS, targetPointRAS, mat) == True:
                     print("collision detected")
+                    print("")
                     continue
-                print("no collision with critical structure")
+                else:
+                    print("no collision with critical structure")
 
                 critDistance = self.DistanceToCriticalVolume(entryPointRAS, targetPointRAS, mat, distanceMap)
                 print(f"min distance =  {critDistance:.2f}")
@@ -404,6 +411,8 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
         stopTime = time.time()
         print(f"runtime = {stopTime - startTime}")
 
+        
+
 
     def CollisionDetection(self, volume, entryPoint, targetPoint, mat):
         sitkImage = sitkUtils.PullVolumeFromSlicer(volume.GetID())
@@ -424,14 +433,17 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
         IJKentryPoint = IJKentryPoint[:3]
         IJKtargetPoint = IJKtargetPoint[:3]
 
-        for samplePoint in (np.linspace(0, 1, num=100)[:, None] * (np.subtract(IJKtargetPoint, IJKentryPoint) + IJKentryPoint)):
+        collision = False
+
+        for samplePoint in (np.linspace(0, 1, num=600)[:, None] * (np.subtract(IJKtargetPoint, IJKentryPoint) + IJKentryPoint)):
             # Convert samplePoint to integer IJK coordinates
             samplePointIJK = np.array(samplePoint).astype(int)
             if np.any(sitkImage < 0) or np.any(samplePointIJK >= sitkImage.shape):
                 continue
             if sitkImage[samplePointIJK[2], samplePointIJK[1], samplePointIJK[0]] != 0:
-                return True
-            return False
+                collision = True
+        return collision
+        
 
 
 
@@ -484,26 +496,34 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
     https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
+    def runTest(self):
+        self.test_PathPlanningTestOutsidePoint()
+        print("")
+        self.test_length_threshold()
+        print("")
+        self.test_collision()
+        print("")
+        self.test_distance_mapping()
+
     def setUp(self):
         """Do whatever is needed to reset the state - typically a scene clear will be enough."""
-        slicer.mrmlScene.Clear()
+        slicer.mrmlScene.Clear(0)
+        print("Scene cleared")
 
-        self.delayDisplay("Starting load data test")
-        # path to the test set given to class. Alter to run on your own system
-        path = '/Users/takrim/Library/Mobile Documents/com~apple~CloudDocs/University/MSc Healthcare Technologies/Image Guided Navigation/Week 2/Tutorial/Week23/TestSet'
-        isLoaded = slicer.util.loadVolume(path + '/r_hippoTest.nii.gz')
-        if (not isLoaded):
-            self.delayDisplay('Unable to load ' + path + '/r_hippoTest.nii.gz')
-
-        self.delayDisplay('Test passed! All data loaded correctly')
 
     def test_PathPlanningTestOutsidePoint(self):
         """Here I give a point I know should be outside for hippocampus.
            Hence I expect the return markups fiducial node to be empty.
         """
 
-        self.delayDisplay("Starting the test")
-        self.delayDisplay("Starting test points outside mask.")
+        self.setUp()
+        targetVolume = slicer.util.loadVolume('/Users/ewenm/AppData/Local/slicer.org/Slicer 5.6.2/datasets/Week23/TestSet/r_hippoTest.nii.gz')
+        if not targetVolume:
+           print('volume not loaded')
+        print('volume loaded')
+
+        print("Starting the test")
+        print("Starting test points outside mask.")
         #
         # get our mask image node
         mask = slicer.util.getNode('r_hippoTest')
@@ -520,7 +540,110 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
 
         # check if we have any returned fiducials -- this should be empty
         if (returnedPoints.GetNumberOfControlPoints() > 0):
-            self.delayDisplay('Test failed. There are ' + str(returnedPoints.GetNumberOfControlPoints()) + ' return points.')
+            print('Test failed. There are ' + str(returnedPoints.GetNumberOfControlPoints()) + ' return points.')
             return
 
-        self.delayDisplay('Test passed! No points were returned.')
+        print('Test passed! No points were returned.')
+
+    def test_length_threshold(self):
+        print("starting length threshold test")
+        Point1 = slicer.vtkMRMLMarkupsFiducialNode()
+        Point1.AddControlPoint(0, 0, 0)
+        Point2 = slicer.vtkMRMLMarkupsFiducialNode()
+        Point2.AddControlPoint(1, 1, 1)
+        Point3 = slicer.vtkMRMLMarkupsFiducialNode()
+        Point3.AddControlPoint(100, 100, 100)
+
+        pathLength12 = np.linalg.norm(np.array(Point2.GetNthControlPointPosition(0)) - np.array(Point1.GetNthControlPointPosition(0)))
+        pathLength13 = np.linalg.norm(np.array(Point3.GetNthControlPointPosition(0)) - np.array(Point1.GetNthControlPointPosition(0)))
+
+        length_threshold = 50
+        print(f"length threshold = {length_threshold}")
+        print(f"distance bewteen points 1 and 2: {pathLength12:.2f}")
+
+        if pathLength12 > length_threshold:
+            print("distance between 1 and 2 is too long")
+        else:
+            print("distance between 1 and 2 is within threshold")
+        
+        print(f"distance bewteen points 1 and 3: {pathLength13:.2f}")
+        if pathLength13 > length_threshold:
+            print("distance between 1 and 3 is too long")
+        else:
+            print("distance between 1 and 3 is within threshold")
+    
+    def test_collision(self):
+        self.setUp()
+
+        CriticalVolume = slicer.util.loadVolume('/Users/ewenm/AppData/Local/slicer.org/Slicer 5.6.2/datasets/Week23/TestSet/vesselsTestDilate1.nii.gz')
+        if not CriticalVolume:
+           print('volume not loaded')
+        else:
+            print('volume loaded')
+
+        print("Starting collision test")
+        #
+        # get our mask image node
+        mask = slicer.util.getNode('vesselsTestDilate1')
+
+        entry_point = [212.708, 81.728, 147.106]
+        target_point_no_collision = [162.0, 90.0, 133.0]
+        target_point_collision = [158.0, 90.0, 128.0]
+
+        mat = vtk.vtkMatrix4x4()
+        CriticalVolume.GetRASToIJKMatrix(mat)
+        imageData = CriticalVolume.GetImageData()
+
+        print(f"testing on know non colliding line from {entry_point} to {target_point_no_collision}")
+        non_colliding_line = PickPointsMatrix().CollisionDetection(CriticalVolume, entry_point, target_point_no_collision, mat)
+        if non_colliding_line:
+            print("collision detected")
+        else:
+            print("no collision detected")
+
+        print(f"testing on known colliding line fron {entry_point} to {target_point_collision}")
+        colliding_line = PickPointsMatrix().CollisionDetection(CriticalVolume, entry_point, target_point_collision, mat)
+        if colliding_line:
+            print("collision detected")
+        else:
+            print("no collision detected")
+
+
+    def test_distance_mapping(self):
+        self.setUp
+        CriticalVolume = slicer.util.loadVolume('/Users/ewenm/AppData/Local/slicer.org/Slicer 5.6.2/datasets/Week23/TestSet/vesselsTestDilate1.nii.gz')
+        if not CriticalVolume:
+           print('volume not loaded')
+        else:
+            print('volume loaded')
+
+        print("Starting distance measurement test")
+        #
+        # get our mask image node
+        mask = slicer.util.getNode('vesselsTestDilate1')
+
+        distancemap = PickPointsMatrix().GenerateDistanceMap(CriticalVolume)
+
+        point_on_surface = [124, 98, 209, 1]
+        point_distant = [124, 98, 214, 1]
+
+        mat = vtk.vtkMatrix4x4()
+        CriticalVolume.GetRASToIJKMatrix(mat)
+
+        point_distantIJK = [0,0,0,1]
+        point_on_surfaceIJK = [0,0,0,1]
+
+        mat.MultiplyPoint(point_on_surface, point_on_surfaceIJK)
+        mat.MultiplyPoint(point_distant, point_distantIJK)
+
+        point_on_surfaceIJK = point_on_surfaceIJK[:3]
+        point_distantIJK = point_distantIJK[:3]
+
+        point_on_surfaceIJK = [int(round(i)) for i in point_on_surfaceIJK]
+        point_distantIJK = [int(round(i)) for i in point_distantIJK]
+
+        surface_distance = distancemap[point_on_surfaceIJK[2], point_on_surfaceIJK[1], point_on_surfaceIJK[0]]
+        distant_distance = distancemap[point_distantIJK[2], point_distantIJK[1], point_distantIJK[0]]
+
+        print(f"distance to critical structure from its surface (should be 0): {surface_distance}")
+        print(f"distance to critical structure from a known distant point (should be 2): {distant_distance}")
