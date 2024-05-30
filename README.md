@@ -1,4 +1,4 @@
-# Image Guided Navigation
+# 3DSlicer
 
 # Overview:
   the aim of this slicer extension is to find the optimal safest path between a plethora of entry and target points by filtering for length of the trajectory, checking for collisions with critical structures and maximising the distance to a critical structure.
@@ -35,4 +35,12 @@
   select "create new points list" in the outputs tab to generate the results
   press the apply button to run the calculations
 
+# IGT Link
 
+
+# ROS
+
+# Robot URDF
+  The urdf defines the shape of the model for the virtually simulated robot.
+  The robot is comprised of 3 2DOF joints connecting 3 links with a sphere marking the end effector at the tip
+  The urdf is used as the base for moveit package which will add collision detection and inverse kinematics calculations to allow the robot to be simulated
