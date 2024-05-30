@@ -1,0 +1,228 @@
+<?xml version="1.00"?>
+<robot name="myrobot">
+	<link name="base_link">
+		<visual>
+			<geometry>
+				<box size="4 4 1"/>
+			</geometry>
+		</visual>
+		<collision>
+			<geometry>
+				<box size="4 4 1"/>
+			</geometry>
+		</collision>
+	</link>
+
+
+	<link name="spin1">
+		<visual>
+			<geometry>
+				<cylinder length="1" radius="2"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 0"/>
+		</visual>
+		<collision>
+			<geometry>
+				<cylinder length="1" radius="2"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 0"/>
+		</collision>
+	</link>
+	
+	<link name="bend1">
+		<visual>
+			<geometry>
+				<cylinder length="2" radius="0.5"/>
+			</geometry>
+			<origin rpy="0 1.57 0" xyz = "0 0 0"/>
+		</visual>
+		<collision>
+			<geometry>
+				<cylinder length="2" radius="0.5"/>
+			</geometry>
+			<origin rpy="0 1.57 0" xyz = "0 0 0"/>
+		</collision>
+	</link>
+	
+	<link name="arm1">
+		<visual>
+			<geometry>
+				<box size="1 1 10"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 5.5"/>
+		</visual>
+		<collision>
+			<geometry>
+				<box size="1 1 10"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 5.5"/>
+		</collision>
+	</link>
+	
+	<link name="spin2">
+		<visual>
+			<geometry>
+				<cylinder length="0.5" radius="1"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 0"/>
+		</visual>
+		<collision>
+			<geometry>
+				<cylinder length="0.5" radius="1"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 0"/>
+		</collision>
+	</link>
+	
+	<link name="bend2">
+		<visual>
+			<geometry>
+				<cylinder length="2" radius="0.5"/>
+			</geometry>
+			<origin rpy="0 1.57 0" xyz = "0 0 0"/>
+		</visual>
+		<collision>
+			<geometry>
+				<cylinder length="2" radius="0.5"/>
+			</geometry>
+			<origin rpy="0 1.57 0" xyz = "0 0 0"/>
+		</collision>
+	</link>
+	
+	<link name="arm2">
+		<visual>
+			<geometry>
+				<box size="1 1 10"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 5.5"/>
+		</visual>
+		<collision>
+			<geometry>
+				<box size="1 1 10"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 5.5"/>
+		</collision>
+	</link>
+	
+	<link name="spin3">
+		<visual>
+			<geometry>
+				<cylinder length="0.5" radius="1"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 0"/>
+		</visual>
+		<collision>
+			<geometry>
+				<cylinder length="0.5" radius="1"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 0"/>
+		</collision>
+	</link>
+	
+	<link name="bend3">
+		<visual>
+			<geometry>
+				<cylinder length="2" radius="0.5"/>
+			</geometry>
+			<origin rpy="0 1.57 0" xyz = "0 0 0"/>
+		</visual>
+		<collision>
+			<geometry>
+				<cylinder length="2" radius="0.5"/>
+			</geometry>
+			<origin rpy="0 1.57 0" xyz = "0 0 0"/>
+		</collision>
+	</link>
+	
+	<link name="arm3">
+		<visual>
+			<geometry>
+				<box size="1 1 10"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 5.5"/>
+		</visual>
+		<collision>
+			<geometry>
+				<box size="1 1 10"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz = "0 0 5.5"/>
+		</collision>
+	</link>
+	
+	<link name="endeffector">
+		<visual>
+			<geometry>
+				<sphere radius="0.5"/>
+			</geometry>
+		</visual>
+	</link>
+	
+
+
+	<joint name="basetospin1" type="continuous">
+		<origin xyz="0 0 1" rpy="0 0 0"/>
+		<axis xyz="0 0 1"/>
+		<parent link="base_link"/>
+		<child link="spin1"/>
+	</joint>
+	
+	<joint name="spin1tobend1" type="fixed">
+		<origin xyz="0 0 1" rpy="0 0 0"/>
+		<parent link="spin1"/>
+		<child link="bend1"/>
+	</joint>
+	
+	<joint name="bend1toarm1" type="revolute">
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<axis xyz="1 0 0"/>
+		<parent link="bend1"/>
+		<child link="arm1"/>
+		<limit lower="-1.57" upper="1.57" effort="30" velocity="1"/>
+	</joint>
+	
+	<joint name="arm1tospin2" type="continuous">
+		<origin xyz="0 0 10.75" rpy="0 0 0"/>
+		<axis xyz="0 0 1"/>
+		<parent link="arm1"/>
+		<child link="spin2"/>
+	</joint>
+	
+	<joint name="spin2tobend2" type="fixed">
+		<origin xyz="0 0 0.75" rpy="0 0 0"/>
+		<parent link="spin2"/>
+		<child link="bend2"/>
+	</joint>
+	
+	<joint name="bend2toarm2" type="revolute">
+		<axis xyz="1 0 0"/>
+		<parent link="bend2"/>
+		<child link="arm2"/>
+		<limit lower="-1.57" upper="1.57" effort="30" velocity="1"/>
+	</joint>
+	
+	<joint name="arm2tospin3" type="continuous">
+		<origin xyz="0 0 10.75" rpy="0 0 0"/>
+		<axis xyz="0 0 1"/>
+		<parent link="arm2"/>
+		<child link="spin3"/>
+	</joint>
+	
+	<joint name="spin3tobend3" type="fixed">
+		<origin xyz="0 0 0.75" rpy="0 0 0"/>
+		<parent link="spin3"/>
+		<child link="bend3"/>
+	</joint>
+	
+	<joint name="bend3toarm3" type="revolute">
+		<axis xyz="1 0 0"/>
+		<parent link="bend3"/>
+		<child link="arm3"/>
+		<limit lower="-1.57" upper="1.57" effort="30" velocity="1"/>
+	</joint>
+	
+	<joint name="arm3toendeffector" type="fixed">
+		<origin xyz="0 0 11" rpy="0 0 0"/>
+		<parent link="arm3"/>
+		<child link="endeffector"/>
+	</joint>
+</robot>
