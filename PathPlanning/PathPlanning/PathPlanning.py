@@ -337,6 +337,7 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
 
             # get pixel using that index
             pixelValue = inputVolume.GetImageData().GetScalarComponentAsDouble(int(ind[0]), int(ind[1]), int(ind[2]), 0)  # looks like it needs 4 ints -- our x,y,z index and a component index (which is 0)
+            #check if the target point is in the wanted volume
             if pixelValue == 1:
                 outputFiducials.AddControlPoint(pos[0], pos[1], pos[2])
 
@@ -346,47 +347,46 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
         CriticalVolume.GetRASToIJKMatrix(mat)
         imageData = CriticalVolume.GetImageData()
 
+        # count and display number of entry and target points
         numberOfEntryPoints = inputEntryFiducials.GetNumberOfControlPoints()
         numberOfTargetPoints = outputFiducials.GetNumberOfControlPoints()
-
         print("number of entry points: ", numberOfEntryPoints)
         print("number of target points: ", numberOfTargetPoints)
 
-        distanceMap = self.GenerateDistanceMap(CriticalVolume)
+        distanceMap = self.GenerateDistanceMap(CriticalVolume) #generate distance map for the distance calculations
         
-        safestDistance = 0
+        safestDistance = 0 #initialise the distance variable
 
         startTime = time.time()
 
+        #iterate over every entry/target point pair
         for entryIndex in range(numberOfEntryPoints):
             entryPointRAS = [0, 0, 0]
             inputEntryFiducials.GetNthControlPointPosition(entryIndex, entryPointRAS)
             for targetIndex in range(numberOfTargetPoints):
                 targetPointRAS = [0, 0, 0]
                 outputFiducials.GetNthControlPointPosition(targetIndex, targetPointRAS)
-
+                #display the points' locations
                 print(f"entry point: {entryPointRAS}")
                 print(f"target point: {targetPointRAS}")
 
-                pathLength = np.linalg.norm(np.array(targetPointRAS) - np.array(entryPointRAS))
-                if pathLength > lengthThreshold:
+                pathLength = np.linalg.norm(np.array(targetPointRAS) - np.array(entryPointRAS)) #distance between the two points
+                if pathLength > lengthThreshold: #check if the line is over the threshold
                     print("Line too long")
-                    print("")
                     continue
                 else:
                     print(f"Line length = {pathLength:.2f}")
 
-                if self.CollisionDetection(CriticalVolume, entryPointRAS, targetPointRAS, mat) == True:
+                if self.CollisionDetection(CriticalVolume, entryPointRAS, targetPointRAS, mat) == True:#check if the path intersects a critical volume
                     print("collision detected")
-                    print("")
                     continue
                 else:
                     print("no collision with critical structure")
 
-                critDistance = self.DistanceToCriticalVolume(entryPointRAS, targetPointRAS, mat, distanceMap)
+                critDistance = self.DistanceToCriticalVolume(entryPointRAS, targetPointRAS, mat, distanceMap)#calculate distance betwen path and critical volume
                 print(f"min distance =  {critDistance:.2f}")
 
-                if critDistance > safestDistance:
+                if critDistance > safestDistance: #keep the safest path
                     safestDistance = critDistance
                     bestEntryIndex = entryIndex
                     bestTargetIndex = targetIndex
@@ -395,12 +395,12 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
                     print("new best line")
                 
                 print("")
-
+        #display information about the chosen path
         print(f"The best trajectory is from entry point {bestEntryIndex} to target point {bestTargetIndex}")
         print(f"entry point location {bestEntry}")
         print(f"best target point location {bestTarget}")
         print(f"distance to critical structure {safestDistance}")
-
+        #display the path
         lineNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsLineNode")
         lineNode.RemoveAllControlPoints()
         lineNode.AddControlPoint(bestEntry)
@@ -415,10 +415,11 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
 
 
     def CollisionDetection(self, volume, entryPoint, targetPoint, mat):
+        #transform the voluem into an array of voxels
         sitkImage = sitkUtils.PullVolumeFromSlicer(volume.GetID())
         sitkImage = sitk.Cast(sitkImage, sitk.sitkUInt8)
         sitkImage = sitk.GetArrayFromImage(sitkImage)
-
+        #translate entry an target points to IJK coordinates
         IJKentryPoint = [0, 0, 0, 1]
         IJKtargetPoint = [0, 0, 0, 1]
         
@@ -433,14 +434,14 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
         IJKentryPoint = IJKentryPoint[:3]
         IJKtargetPoint = IJKtargetPoint[:3]
 
-        collision = False
+        collision = False #set default collision state
 
-        for samplePoint in (np.linspace(0, 1, num=600)[:, None] * (np.subtract(IJKtargetPoint, IJKentryPoint) + IJKentryPoint)):
+        for samplePoint in (np.linspace(0, 1, num=100)[:, None] * (np.subtract(IJKtargetPoint, IJKentryPoint) + IJKentryPoint)): #sample the path
             # Convert samplePoint to integer IJK coordinates
             samplePointIJK = np.array(samplePoint).astype(int)
-            if np.any(sitkImage < 0) or np.any(samplePointIJK >= sitkImage.shape):
+            if np.any(sitkImage < 0) or np.any(samplePointIJK >= sitkImage.shape):#verify point is within boundaries
                 continue
-            if sitkImage[samplePointIJK[2], samplePointIJK[1], samplePointIJK[0]] != 0:
+            if sitkImage[samplePointIJK[2], samplePointIJK[1], samplePointIJK[0]] != 0:#check if sampple point overlaps with volume array
                 collision = True
         return collision
         
@@ -448,6 +449,7 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
 
 
     def GenerateDistanceMap(self, volume):
+        #generate the distance map array
         sitkImage = sitkUtils.PullVolumeFromSlicer(volume.GetID())
         sitkImage = sitk.Cast(sitkImage, sitk.sitkUInt8)  # Convert to a supported pixel type
         distanceFilter = sitk.DanielssonDistanceMapImageFilter()
@@ -456,6 +458,7 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
                 
         
     def DistanceToCriticalVolume(self, entryPoint, targetPoint, mat, distanceMap):
+        #convert points to IJK coordinates
         IJKentryPoint = [0, 0, 0, 1]
         IJKtargetPoint = [0, 0, 0, 1]
         
@@ -470,14 +473,14 @@ class PickPointsMatrix(ScriptedLoadableModuleLogic):
         IJKentryPoint = IJKentryPoint[:3]
         IJKtargetPoint = IJKtargetPoint[:3]
 
-        minDistanceToCriticalStructure = np.inf
+        minDistanceToCriticalStructure = np.inf #initialise variable
 
         # Generate sample points between entryPoint and targetPoint
-        for samplePoint in (np.linspace(0, 1, num=100)[:, None] * (np.subtract(IJKtargetPoint, IJKentryPoint) + IJKentryPoint)):
+        for samplePoint in (np.linspace(0, 1, num=100)[:, None] * (np.subtract(IJKtargetPoint, IJKentryPoint) + IJKentryPoint)): #sample the path
             # Convert samplePoint to integer IJK coordinates
             samplePointIJK = np.array(samplePoint).astype(int)
-            samplePointDistance = distanceMap[samplePointIJK[2], samplePointIJK[1], samplePointIJK[0]]
-            if samplePointDistance < minDistanceToCriticalStructure:
+            samplePointDistance = distanceMap[samplePointIJK[2], samplePointIJK[1], samplePointIJK[0]]#find the distance map value corresponding to the sample point voxel
+            if samplePointDistance < minDistanceToCriticalStructure:#keep only the smallest value for distance for a given path
                 minDistanceToCriticalStructure = samplePointDistance
         return minDistanceToCriticalStructure
 
@@ -497,6 +500,7 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
     """
 
     def runTest(self):
+        #run all the tests
         self.test_PathPlanningTestOutsidePoint()
         print("")
         self.test_length_threshold()
@@ -547,20 +551,21 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
 
     def test_length_threshold(self):
         print("starting length threshold test")
+        #hard code points locations
         Point1 = slicer.vtkMRMLMarkupsFiducialNode()
         Point1.AddControlPoint(0, 0, 0)
         Point2 = slicer.vtkMRMLMarkupsFiducialNode()
         Point2.AddControlPoint(1, 1, 1)
         Point3 = slicer.vtkMRMLMarkupsFiducialNode()
         Point3.AddControlPoint(100, 100, 100)
-
+        #calculate path distances knowing 1to3 is above and 1to2 is below the threshold
         pathLength12 = np.linalg.norm(np.array(Point2.GetNthControlPointPosition(0)) - np.array(Point1.GetNthControlPointPosition(0)))
         pathLength13 = np.linalg.norm(np.array(Point3.GetNthControlPointPosition(0)) - np.array(Point1.GetNthControlPointPosition(0)))
 
-        length_threshold = 50
+        length_threshold = 50#set threshold
         print(f"length threshold = {length_threshold}")
         print(f"distance bewteen points 1 and 2: {pathLength12:.2f}")
-
+        #comapre path lengths to the threshold
         if pathLength12 > length_threshold:
             print("distance between 1 and 2 is too long")
         else:
@@ -574,7 +579,7 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
     
     def test_collision(self):
         self.setUp()
-
+        #load the critical volume
         CriticalVolume = slicer.util.loadVolume('/Users/ewenm/AppData/Local/slicer.org/Slicer 5.6.2/datasets/Week23/TestSet/vesselsTestDilate1.nii.gz')
         if not CriticalVolume:
            print('volume not loaded')
@@ -585,7 +590,7 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
         #
         # get our mask image node
         mask = slicer.util.getNode('vesselsTestDilate1')
-
+        #hard code paths: one collides and one doesn't
         entry_point = [212.708, 81.728, 147.106]
         target_point_no_collision = [162.0, 90.0, 133.0]
         target_point_collision = [158.0, 90.0, 128.0]
@@ -593,7 +598,7 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
         mat = vtk.vtkMatrix4x4()
         CriticalVolume.GetRASToIJKMatrix(mat)
         imageData = CriticalVolume.GetImageData()
-
+        #run the collision detection code
         print(f"testing on know non colliding line from {entry_point} to {target_point_no_collision}")
         non_colliding_line = PickPointsMatrix().CollisionDetection(CriticalVolume, entry_point, target_point_no_collision, mat)
         if non_colliding_line:
@@ -611,6 +616,7 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
 
     def test_distance_mapping(self):
         self.setUp
+        #input the critical volume
         CriticalVolume = slicer.util.loadVolume('/Users/ewenm/AppData/Local/slicer.org/Slicer 5.6.2/datasets/Week23/TestSet/vesselsTestDilate1.nii.gz')
         if not CriticalVolume:
            print('volume not loaded')
@@ -623,13 +629,13 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
         mask = slicer.util.getNode('vesselsTestDilate1')
 
         distancemap = PickPointsMatrix().GenerateDistanceMap(CriticalVolume)
-
+        #hard code points at known distances
         point_on_surface = [124, 98, 209, 1]
         point_distant = [124, 98, 214, 1]
 
         mat = vtk.vtkMatrix4x4()
         CriticalVolume.GetRASToIJKMatrix(mat)
-
+        #convert points to IJK coordinates
         point_distantIJK = [0,0,0,1]
         point_on_surfaceIJK = [0,0,0,1]
 
@@ -641,7 +647,7 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
 
         point_on_surfaceIJK = [int(round(i)) for i in point_on_surfaceIJK]
         point_distantIJK = [int(round(i)) for i in point_distantIJK]
-
+        #find the distance map value for each voxel
         surface_distance = distancemap[point_on_surfaceIJK[2], point_on_surfaceIJK[1], point_on_surfaceIJK[0]]
         distant_distance = distancemap[point_distantIJK[2], point_distantIJK[1], point_distantIJK[0]]
 
