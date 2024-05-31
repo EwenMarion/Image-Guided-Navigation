@@ -591,7 +591,7 @@ class PathPlanningTest(ScriptedLoadableModuleTest):
         # get our mask image node
         mask = slicer.util.getNode('vesselsTestDilate1')
         #hard code paths: one collides and one doesn't
-        entry_point = [212.708, 81.728, 147.106]
+        entry_point = [212, 81, 147]
         target_point_no_collision = [162.0, 90.0, 133.0]
         target_point_collision = [158.0, 90.0, 128.0]
 
